@@ -23,12 +23,12 @@ def test_signature_forgery_resistance():
     msg = factory.create_hello(bob.id)
     
     # Try to verify with wrong key
-    verified_with_bob = msg.verify(bob.public_key())
+    verified_with_bob = msg.verify(bob.public_key.to_bytes())
     
     # Tamper with message
     msg.payload["tampered"] = True
     
-    verified_after_tamper = msg.verify(alice.public_key())
+    verified_after_tamper = msg.verify(alice.public_key.to_bytes())
     
     passed = not verified_with_bob and not verified_after_tamper
     print(f"  {'PASS' if passed else 'FAIL'} Signature forgery resistance")
