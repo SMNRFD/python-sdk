@@ -1,88 +1,122 @@
-"""SMCP - Secure Model Communication Protocol Reference Implementation."""
+"""
+SMCP - Secure Model Communication Protocol
+Reference Implementation in Python
+
+This is the official reference implementation of SMCP, a zero-trust,
+capability-based secure communication protocol for model-to-model
+and human-to-model interactions.
+"""
 
 __version__ = "1.0.0"
 __author__ = "SMCP Project"
+__license__ = "Apache-2.0"
 
-from crypto import (
-    PrivateKey, PublicKey, ExchangeKeyPair, KeyStore,
-    hash_data, derive_key, generate_nonce, generate_session_id,
-    encrypt_aes_gcm, decrypt_aes_gcm,
-    encrypt_chacha20, decrypt_chacha20,
-    compute_hmac, constant_time_compare,
-    SignedMessage, CryptoError
+from smcp.crypto import (
+    CryptoError,
+    KeyPair,
+    ExchangeKeyPair,
+    AesGcmCipher,
+    ChaChaCipher,
+    Hasher,
+    KeyDeriver,
+    SignedMessage,
+    CryptoBox,
+    generate_nonce,
+    random_bytes,
 )
-
-from identity import (
-    Identity, IdentityType, IdentityStatus, IdentityProvider, IdentityManager,
-    Certificate,
-    create_system_identity, create_test_agent
+from smcp.identity import (
+    Identity,
+    IdentityType,
+    IdentityError,
+    IdentityManager,
 )
-
-from capability import (
-    Capability, CapabilityManager, CapabilityStatus,
-    Action, Resource,
-    ConstraintType,
-    TemporalConstraint, UsageConstraint, PathConstraint,
-    ParameterConstraint, ContextConstraint, DelegationInfo,
-    create_read_action, create_write_action, create_execute_action,
-    create_wildcard_resource, create_specific_resource
+from smcp.capability import (
+    Capability,
+    CapabilityError,
+    CapabilityManager,
+    Constraints,
 )
-
-from protocol import (
-    MessageType, ProtocolVersion, ProtocolMessage,
-    MessageValidator, MessageFactory,
-    create_hello_payload, create_negotiate_payload,
-    create_auth_payload, create_session_open_payload,
-    create_session_close_payload, create_discover_payload,
-    create_invoke_payload, create_result_payload, create_error_payload,
-    create_consent_request_payload, create_consent_response_payload,
-    create_capability_grant_payload, create_audit_receipt_payload,
-    create_policy_decision_payload
+from smcp.policy import (
+    Policy,
+    PolicyEngine,
+    PolicyDecision,
+    PolicyError,
 )
-
-from transport.serialization import (
-    Serializer, Format, SerializationError,
-    canonical_json_encode, canonical_json_decode,
-    canonical_cbor_encode, canonical_cbor_decode,
-    serialize_message, deserialize_message,
-    compute_message_hash
+from smcp.consent import (
+    ConsentRequest,
+    ConsentResponse,
+    ConsentStatus,
+    ConsentManager,
+    ConsentError,
+)
+from smcp.audit import (
+    AuditRecord,
+    AuditReceipt,
+    AuditManager,
+    AuditError,
+)
+from smcp.protocol import (
+    Message,
+    MessageType,
+    ProtocolError,
+    ProtocolHandler,
+)
+from smcp.transport import (
+    Transport,
+    TransportConfig,
+    TransportError,
+    TlsTransport,
+    TcpTransport,
+    WebSocketTransport,
+)
+from smcp.session import (
+    Session,
+    SessionState,
+    SessionManager,
+    SessionError,
+)
+from smcp.registry import (
+    ToolRegistry,
+    ToolManifest,
+    RegistryError,
+)
+from smcp.discovery import (
+    DiscoveryService,
+    DiscoveryResult,
+    DiscoveryError,
+)
+from smcp.server import (
+    Server,
+    ServerConfig,
+    ServerError,
+)
+from smcp.client import (
+    Client,
+    ClientConfig,
+    ClientError,
+)
+from smcp.runtime import (
+    Runtime,
+    RuntimeConfig,
+    PluginInfo,
+    RuntimeError as SmcpRuntimeError,
 )
 
 __all__ = [
-    # Version
-    '__version__',
-    # Crypto
-    'PrivateKey', 'PublicKey', 'ExchangeKeyPair', 'KeyStore',
-    'hash_data', 'derive_key', 'generate_nonce', 'generate_session_id',
-    'encrypt_aes_gcm', 'decrypt_aes_gcm',
-    'encrypt_chacha20', 'decrypt_chacha20',
-    'compute_hmac', 'constant_time_compare',
-    'SignedMessage', 'CryptoError',
-    # Identity
-    'Identity', 'IdentityType', 'IdentityStatus', 
-    'IdentityProvider', 'IdentityManager', 'Certificate',
-    'create_system_identity', 'create_test_agent',
-    # Capability
-    'Capability', 'CapabilityManager', 'CapabilityStatus',
-    'Action', 'Resource', 'ConstraintType',
-    'TemporalConstraint', 'UsageConstraint', 'PathConstraint',
-    'ParameterConstraint', 'ContextConstraint', 'DelegationInfo',
-    'create_read_action', 'create_write_action', 'create_execute_action',
-    'create_wildcard_resource', 'create_specific_resource',
-    # Protocol
-    'MessageType', 'ProtocolVersion', 'ProtocolMessage',
-    'MessageValidator', 'MessageFactory',
-    'create_hello_payload', 'create_negotiate_payload',
-    'create_auth_payload', 'create_session_open_payload',
-    'create_session_close_payload', 'create_discover_payload',
-    'create_invoke_payload', 'create_result_payload', 'create_error_payload',
-    'create_consent_request_payload', 'create_consent_response_payload',
-    'create_capability_grant_payload', 'create_audit_receipt_payload',
-    'create_policy_decision_payload',
-    # Serialization
-    'Serializer', 'Format', 'SerializationError',
-    'canonical_json_encode', 'canonical_json_decode',
-    'canonical_cbor_encode', 'canonical_cbor_decode',
-    'serialize_message', 'deserialize_message',
-    'compute_message_hash',
+    "__version__",
+    "CryptoError", "KeyPair", "ExchangeKeyPair", "AesGcmCipher", "ChaChaCipher",
+    "Hasher", "KeyDeriver", "SignedMessage", "CryptoBox", "generate_nonce", "random_bytes",
+    "Identity", "IdentityType", "IdentityError", "IdentityManager",
+    "Capability", "CapabilityError", "CapabilityManager", "Constraints",
+    "Policy", "PolicyEngine", "PolicyDecision", "PolicyError",
+    "ConsentRequest", "ConsentResponse", "ConsentStatus", "ConsentManager", "ConsentError",
+    "AuditRecord", "AuditReceipt", "AuditManager", "AuditError",
+    "Message", "MessageType", "ProtocolError", "ProtocolHandler",
+    "Transport", "TransportConfig", "TransportError", "TlsTransport", "TcpTransport", "WebSocketTransport",
+    "Session", "SessionState", "SessionManager", "SessionError",
+    "ToolRegistry", "ToolManifest", "RegistryError",
+    "DiscoveryService", "DiscoveryResult", "DiscoveryError",
+    "Server", "ServerConfig", "ServerError",
+    "Client", "ClientConfig", "ClientError",
+    "Runtime", "RuntimeConfig", "PluginInfo", "SmcpRuntimeError",
 ]
